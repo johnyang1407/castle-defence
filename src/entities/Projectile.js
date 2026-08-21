@@ -36,7 +36,10 @@ export default class Projectile extends Phaser.GameObjects.Container {
         const color = this.team === 'player' ? COLORS.PROJECTILE_PLAYER : COLORS.PROJECTILE_AI;
         const glowColor = this.team === 'player' ? 0x00bfff : 0xff6600;
 
-        this.rotation = 0;
+        const launchAngle = this.launchRotation * Phaser.Math.RAD_TO_DEG;
+        const chargeAngle = launchAngle + (this.team === 'player' ? 18 : -18);
+
+        this.rotation = this.launchRotation;
 
         this.trail = this.scene.add.graphics();
         this.trail.lineStyle(4, glowColor, 0.45);
@@ -94,7 +97,7 @@ export default class Projectile extends Phaser.GameObjects.Container {
             scaleX: 1.15,
             scaleY: 1.15,
             alpha: 1,
-            angle: this.team === 'player' ? 18 : -18,
+            angle: chargeAngle,
             duration: this.chargeDuration,
             ease: 'Back.easeOut'
         });
