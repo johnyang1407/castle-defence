@@ -96,6 +96,7 @@ export default class Castle extends Phaser.GameObjects.Container {
     }
 
     takeDamage(amount) {
+        this.showDamageText(amount);
         this.hp -= amount;
 
         if (this.hp <= 0) {
@@ -104,6 +105,34 @@ export default class Castle extends Phaser.GameObjects.Container {
 
         this.updateHpBar();
         return this.hp <= 0;
+    }
+
+    showDamageText(amount) {
+        if (!this.scene || !this.scene.add || amount <= 0) return;
+
+        const textColor = this.team === 'player' ? '#ff8844' : '#66ddff';
+        const startX = this.x + this.width / 2 + Phaser.Math.Between(-12, 12);
+        const startY = this.y - 30;
+        const damageText = this.scene.add.text(startX, startY, `-${Math.round(amount)}`, {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: textColor,
+            fontStyle: 'bold',
+            stroke: '#1a1020',
+            strokeThickness: 4
+        }).setOrigin(0.5).setDepth(DEPTH.UI + 5);
+
+        this.scene.tweens.add({
+            targets: damageText,
+            y: startY - 42,
+            x: startX + Phaser.Math.Between(-10, 10),
+            alpha: 0,
+            scaleX: 1.3,
+            scaleY: 1.3,
+            duration: 700,
+            ease: 'Cubic.easeOut',
+            onComplete: () => damageText.destroy()
+        });
     }
 
     heal(amount) {

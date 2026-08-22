@@ -256,6 +256,7 @@ export default class Monster extends Phaser.GameObjects.Container {
     takeDamage(amount) {
         if (this.state === 'dead') return;
 
+        this.showDamageText(amount);
         this.hp -= amount;
 
         if (this.hp <= 0) {
@@ -264,6 +265,34 @@ export default class Monster extends Phaser.GameObjects.Container {
         }
 
         this.updateHpBar();
+    }
+
+    showDamageText(amount) {
+        if (!this.scene || !this.scene.add || amount <= 0) return;
+
+        const textColor = this.team === 'player' ? '#ff8844' : '#66ddff';
+        const startX = this.x + Phaser.Math.Between(-10, 10);
+        const startY = this.y - this.height * 0.75;
+        const damageText = this.scene.add.text(startX, startY, `-${Math.round(amount)}`, {
+            fontSize: '22px',
+            fontFamily: 'Arial',
+            color: textColor,
+            fontStyle: 'bold',
+            stroke: '#1a1020',
+            strokeThickness: 4
+        }).setOrigin(0.5).setDepth(DEPTH.UI + 5);
+
+        this.scene.tweens.add({
+            targets: damageText,
+            y: startY - 36,
+            x: startX + Phaser.Math.Between(-8, 8),
+            alpha: 0,
+            scaleX: 1.25,
+            scaleY: 1.25,
+            duration: 650,
+            ease: 'Cubic.easeOut',
+            onComplete: () => damageText.destroy()
+        });
     }
 
     updateHpBar() {
