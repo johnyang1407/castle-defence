@@ -244,7 +244,10 @@ export default class Monster extends Phaser.GameObjects.Container {
         if (!this.canAttack || this.state === 'dead') return;
 
         if (target && typeof target.takeDamage === 'function') {
-            target.takeDamage(this.attackDamage);
+            target.takeDamage(this.attackDamage, {
+                sourceX: this.x,
+                sourceY: this.y
+            });
         }
 
         this.canAttack = false;
@@ -253,10 +256,10 @@ export default class Monster extends Phaser.GameObjects.Container {
         });
     }
 
-    takeDamage(amount) {
+    takeDamage(amount, hitInfo = {}) {
         if (this.state === 'dead') return;
 
-        this.showDamageText(amount);
+        this.showDamageText(amount, hitInfo);
         this.hp -= amount;
 
         if (this.hp <= 0) {
@@ -267,12 +270,19 @@ export default class Monster extends Phaser.GameObjects.Container {
         this.updateHpBar();
     }
 
-    showDamageText(amount) {
+    showDamageText(amount, hitInfo = {}) {
         if (!this.scene || !this.scene.add || amount <= 0) return;
 
+        this.scene.damageTextCount = (this.scene.damageTextCount || 0) + 1;
+        const stackIndex = this.scene.damageTextCount % 5;
+        const sourceDirection = hitInfo.sourceX === undefined
+            ? Phaser.Math.Between(-1, 1)
+            : Math.sign(this.x - hitInfo.sourceX) || Phaser.Math.Between(-1, 1);
+        const sideOffset = sourceDirection * (16 + stackIndex * 7);
+        const heightOffset = (stackIndex % 3) * 10;
         const textColor = this.team === 'player' ? '#ff8844' : '#66ddff';
-        const startX = this.x + Phaser.Math.Between(-10, 10);
-        const startY = this.y - this.height * 0.75;
+        const startX = this.x + sideOffset + Phaser.Math.Between(-4, 4);
+        const startY = this.y - this.height * 0.75 - heightOffset;
         const damageText = this.scene.add.text(startX, startY, `-${Math.round(amount)}`, {
             fontSize: '22px',
             fontFamily: 'Arial',
@@ -285,7 +295,7 @@ export default class Monster extends Phaser.GameObjects.Container {
         this.scene.tweens.add({
             targets: damageText,
             y: startY - 36,
-            x: startX + Phaser.Math.Between(-8, 8),
+            x: startX + sourceDirection * 12,
             alpha: 0,
             scaleX: 1.25,
             scaleY: 1.25,

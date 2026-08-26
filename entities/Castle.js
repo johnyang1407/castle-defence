@@ -95,8 +95,8 @@ export default class Castle extends Phaser.GameObjects.Container {
         this.add(this.border);
     }
 
-    takeDamage(amount) {
-        this.showDamageText(amount);
+    takeDamage(amount, hitInfo = {}) {
+        this.showDamageText(amount, hitInfo);
         this.hp -= amount;
 
         if (this.hp <= 0) {
@@ -107,12 +107,19 @@ export default class Castle extends Phaser.GameObjects.Container {
         return this.hp <= 0;
     }
 
-    showDamageText(amount) {
+    showDamageText(amount, hitInfo = {}) {
         if (!this.scene || !this.scene.add || amount <= 0) return;
 
+        this.scene.damageTextCount = (this.scene.damageTextCount || 0) + 1;
+        const stackIndex = this.scene.damageTextCount % 5;
+        const sourceDirection = hitInfo.sourceX === undefined
+            ? Phaser.Math.Between(-1, 1)
+            : Math.sign((this.x + this.width / 2) - hitInfo.sourceX) || Phaser.Math.Between(-1, 1);
+        const sideOffset = sourceDirection * (18 + stackIndex * 8);
+        const heightOffset = (stackIndex % 3) * 12;
         const textColor = this.team === 'player' ? '#ff8844' : '#66ddff';
-        const startX = this.x + this.width / 2 + Phaser.Math.Between(-12, 12);
-        const startY = this.y - 30;
+        const startX = this.x + this.width / 2 + sideOffset + Phaser.Math.Between(-5, 5);
+        const startY = this.y - 30 - heightOffset;
         const damageText = this.scene.add.text(startX, startY, `-${Math.round(amount)}`, {
             fontSize: '24px',
             fontFamily: 'Arial',
@@ -125,7 +132,7 @@ export default class Castle extends Phaser.GameObjects.Container {
         this.scene.tweens.add({
             targets: damageText,
             y: startY - 42,
-            x: startX + Phaser.Math.Between(-10, 10),
+            x: startX + sourceDirection * 14,
             alpha: 0,
             scaleX: 1.3,
             scaleY: 1.3,
