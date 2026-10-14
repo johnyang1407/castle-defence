@@ -1,403 +1,526 @@
-import { DEPTH } from '../config/constants.js';
-import { calculateMonsterStats } from '../config/monsterData.js';
+import { CRITICAL, DEPTH } from "../config/constants.js";
+import { calculateMonsterStats } from "../config/monsterData.js";
 
 export default class Monster extends Phaser.GameObjects.Container {
-    constructor(scene, x, y, team, grade = 'common', type = 'attacker') {
-        super(scene, x, y);
+  constructor(scene, x, y, team, grade = "common", type = "attacker") {
+    super(scene, x, y);
 
-        this.scene = scene;
-        this.team = team;
-        this.grade = grade;
-        this.type = type;
+    this.scene = scene;
+    this.team = team;
+    this.grade = grade;
+    this.type = type;
 
-        const stats = calculateMonsterStats(grade, type);
-        this.hp = stats.hp;
-        this.maxHp = stats.hp;
-        this.speed = stats.speed;
-        this.attackDamage = stats.attackDamage;
-        this.attackRange = stats.attackRange;
-        this.attackCooldown = stats.attackCooldown;
-        this.width = stats.width;
-        this.height = stats.height;
-        this.color = stats.color;
-        this.visualParts = [];
+    const stats = calculateMonsterStats(grade, type);
+    this.hp = stats.hp;
+    this.maxHp = stats.hp;
+    this.speed = stats.speed;
+    this.attackDamage = stats.attackDamage;
+    this.attackRange = stats.attackRange;
+    this.attackCooldown = stats.attackCooldown;
+    this.width = stats.width;
+    this.height = stats.height;
+    this.color = stats.color;
+    this.visualParts = [];
 
-        this.state = 'moving';
-        this.canAttack = true;
-        this.target = null;
-        this.groundContactY = this.height / 2 - 2;
+    this.state = "moving";
+    this.canAttack = true;
+    this.target = null;
+    this.groundContactY = this.height / 2 - 2;
 
-        this.createVisuals();
-        this.groundContactY = this.calculateGroundContactY();
-        this.setDepth(DEPTH.MONSTER);
+    this.createVisuals();
+    this.groundContactY = this.calculateGroundContactY();
+    this.setDepth(DEPTH.MONSTER);
 
-        scene.physics.world.enable(this);
-        this.body.setSize(this.width, this.height);
+    scene.physics.world.enable(this);
+    this.body.setSize(this.width, this.height);
+  }
+
+  createVisuals() {
+    const teamColor = this.team === "player" ? 0x3388ff : 0xff4444;
+    const borderColor = this.team === "player" ? 0x00ddff : 0xff6600;
+    const glowColor = this.team === "player" ? 0x88ddff : 0xff9944;
+
+    this.createMonsterShape(teamColor, borderColor, glowColor);
+    this.createGradeIndicator(glowColor);
+
+    this.hpBarBg = this.scene.add.rectangle(
+      0,
+      -this.height - 8,
+      this.width,
+      6,
+      0x333333,
+    );
+    this.add(this.hpBarBg);
+
+    this.hpBar = this.scene.add.rectangle(
+      0,
+      -this.height - 8,
+      this.width,
+      6,
+      0x00ff00,
+    );
+    this.add(this.hpBar);
+
+    const teamIcon = this.team === "player" ? "P" : "A";
+    this.gradeText = this.scene.add
+      .text(0, -this.height - 18, `${teamIcon}${this.grade[0].toUpperCase()}`, {
+        fontSize: "12px",
+        fontFamily: "Arial",
+        color: "#ffffff",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+    this.add(this.gradeText);
+  }
+
+  createMonsterShape(teamColor, borderColor, glowColor) {
+    if (this.type === "attacker") {
+      this.createAttackerShape(teamColor, borderColor);
+    } else if (this.type === "defender") {
+      this.createDefenderShape(teamColor, borderColor);
+    } else {
+      this.createSpeederShape(teamColor, borderColor);
     }
 
-    createVisuals() {
-        const teamColor = this.team === 'player' ? 0x3388ff : 0xff4444;
-        const borderColor = this.team === 'player' ? 0x00ddff : 0xff6600;
-        const glowColor = this.team === 'player' ? 0x88ddff : 0xff9944;
+    const glowStrength = this.getGlowStrength();
+    if (glowStrength > 0) {
+      this.createGlowEffect(glowColor, glowStrength);
+    }
+  }
 
-        this.createMonsterShape(teamColor, borderColor, glowColor);
-        this.createGradeIndicator(glowColor);
+  trackVisualPart(part) {
+    this.visualParts.push(part);
+    return part;
+  }
 
-        this.hpBarBg = this.scene.add.rectangle(0, -this.height - 8, this.width, 6, 0x333333);
-        this.add(this.hpBarBg);
-
-        this.hpBar = this.scene.add.rectangle(0, -this.height - 8, this.width, 6, 0x00ff00);
-        this.add(this.hpBar);
-
-        const teamIcon = this.team === 'player' ? 'P' : 'A';
-        this.gradeText = this.scene.add.text(0, -this.height - 18, `${teamIcon}${this.grade[0].toUpperCase()}`, {
-            fontSize: '12px',
-            fontFamily: 'Arial',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-        this.add(this.gradeText);
+  calculateGroundContactY() {
+    if (this.visualParts.length === 0) {
+      return this.height / 2 - 2;
     }
 
-    createMonsterShape(teamColor, borderColor, glowColor) {
-        if (this.type === 'attacker') {
-            this.createAttackerShape(teamColor, borderColor);
-        } else if (this.type === 'defender') {
-            this.createDefenderShape(teamColor, borderColor);
-        } else {
-            this.createSpeederShape(teamColor, borderColor);
-        }
+    let bottom = this.height / 2;
 
-        const glowStrength = this.getGlowStrength();
-        if (glowStrength > 0) {
-            this.createGlowEffect(glowColor, glowStrength);
-        }
+    this.visualParts.forEach((part) => {
+      const bounds = part.getBounds();
+      bottom = Math.max(bottom, bounds.bottom - this.y);
+    });
+
+    return bottom;
+  }
+
+  createAttackerShape(teamColor, borderColor) {
+    const bodyCenterY = this.height * 0.15;
+    const bodyWidth = this.width * 0.8;
+    const bodyHeight = this.height * 0.7;
+    const peakWidth = this.width * 0.3;
+    const peakHeight = this.height * 0.4;
+    const peakColor = this.team === "player" ? 0x5aacff : 0xff7777;
+
+    this.bodyRect = this.trackVisualPart(
+      this.scene.add.rectangle(
+        0,
+        bodyCenterY,
+        bodyWidth,
+        bodyHeight,
+        teamColor,
+      ),
+    );
+    this.add(this.bodyRect);
+
+    this.peak1 = this.trackVisualPart(
+      this.scene.add.rectangle(
+        -this.width * 0.2,
+        bodyCenterY - this.height * 0.5,
+        peakWidth,
+        peakHeight,
+        peakColor,
+      ),
+    );
+    this.add(this.peak1);
+
+    this.peak2 = this.trackVisualPart(
+      this.scene.add.rectangle(
+        this.width * 0.2,
+        bodyCenterY - this.height * 0.5,
+        peakWidth,
+        peakHeight,
+        peakColor,
+      ),
+    );
+    this.add(this.peak2);
+
+    this.border = this.trackVisualPart(
+      this.scene.add
+        .rectangle(0, bodyCenterY, bodyWidth, bodyHeight)
+        .setStrokeStyle(2, borderColor)
+        .setFillStyle(),
+    );
+    this.add(this.border);
+  }
+
+  createDefenderShape(teamColor, borderColor) {
+    const centerRadius = this.width * 0.35;
+    const circleCenterY = this.height * 0.05;
+    const shieldCenterY = this.height * 0.22;
+    const shieldColor = this.team === "player" ? 0x2266bb : 0xdd3333;
+
+    this.bodyCircle = this.trackVisualPart(
+      this.scene.add.circle(0, circleCenterY, centerRadius, teamColor),
+    );
+    this.add(this.bodyCircle);
+
+    this.shield = this.trackVisualPart(
+      this.scene.add.rectangle(
+        0,
+        shieldCenterY,
+        this.width * 0.7,
+        this.height * 0.5,
+        shieldColor,
+      ),
+    );
+    this.add(this.shield);
+
+    this.border = this.trackVisualPart(
+      this.scene.add
+        .circle(0, circleCenterY, centerRadius)
+        .setStrokeStyle(3, borderColor)
+        .setFillStyle(),
+    );
+    this.add(this.border);
+
+    this.shieldBorder = this.trackVisualPart(
+      this.scene.add
+        .rectangle(0, shieldCenterY, this.width * 0.7, this.height * 0.5)
+        .setStrokeStyle(3, borderColor)
+        .setFillStyle(),
+    );
+    this.add(this.shieldBorder);
+  }
+
+  createSpeederShape(teamColor, borderColor) {
+    const bodyCenterY = this.height * 0.15;
+    const points = [
+      new Phaser.Geom.Point(0, bodyCenterY - this.height * 0.35),
+      new Phaser.Geom.Point(this.width * 0.35, bodyCenterY),
+      new Phaser.Geom.Point(0, bodyCenterY + this.height * 0.35),
+      new Phaser.Geom.Point(-this.width * 0.35, bodyCenterY),
+    ];
+
+    this.bodyDiamond = this.trackVisualPart(
+      this.scene.add.polygon(0, 0, points, teamColor),
+    );
+    this.add(this.bodyDiamond);
+
+    const lineColor = this.team === "player" ? 0x88ddff : 0xff9944;
+    this.speedLine1 = this.trackVisualPart(
+      this.scene.add.rectangle(
+        -this.width * 0.4,
+        bodyCenterY - this.height * 0.15,
+        this.width * 0.3,
+        2,
+        lineColor,
+      ),
+    );
+    this.add(this.speedLine1);
+
+    this.speedLine2 = this.trackVisualPart(
+      this.scene.add.rectangle(
+        -this.width * 0.4,
+        bodyCenterY + this.height * 0.15,
+        this.width * 0.3,
+        2,
+        lineColor,
+      ),
+    );
+    this.add(this.speedLine2);
+
+    this.border = this.trackVisualPart(
+      this.scene.add
+        .polygon(0, 0, points)
+        .setStrokeStyle(2, borderColor)
+        .setFillStyle(),
+    );
+    this.add(this.border);
+  }
+
+  createGradeIndicator(glowColor) {
+    const gradeStars = {
+      common: 1,
+      rare: 2,
+      epic: 3,
+      legend: 4,
+    };
+
+    const starCount = gradeStars[this.grade] || 1;
+    const starSize = 4;
+    const starGap = 6;
+    const totalWidth = starCount * starSize + (starCount - 1) * starGap;
+    const startX = -totalWidth / 2;
+
+    for (let i = 0; i < starCount; i++) {
+      const starX = startX + i * (starSize + starGap) + starSize / 2;
+      const star = this.scene.add
+        .star(
+          starX,
+          -this.height * 0.55,
+          5,
+          starSize / 2,
+          starSize / 2.5,
+          glowColor,
+        )
+        .setOrigin(0.5);
+      this.add(star);
+    }
+  }
+
+  getGlowStrength() {
+    const glowMap = { common: 0.3, rare: 0.5, epic: 0.7, legend: 1.0 };
+    return glowMap[this.grade] || 0.3;
+  }
+
+  createGlowEffect(glowColor, strength) {
+    if (this.type === "attacker") {
+      this.glowTween = this.scene.tweens.add({
+        targets: this,
+        alpha: 1,
+        duration: 500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.inOut",
+      });
+    } else if (this.type === "defender") {
+      this.glowTween = this.scene.tweens.add({
+        targets: this,
+        scale: 1 + strength * 0.05,
+        duration: 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.inOut",
+      });
+    } else {
+      this.glowTween = this.scene.tweens.add({
+        targets: this,
+        scale: 1 + strength * 0.03,
+        duration: 300,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.inOut",
+      });
+    }
+  }
+
+  getGroundContactY() {
+    return this.groundContactY;
+  }
+
+  alignToGround() {
+    if (!this.scene || typeof this.scene.GROUND_Y !== "number") return;
+
+    const bounds = this.getBounds();
+    const delta = this.scene.GROUND_Y - bounds.bottom;
+
+    if (Math.abs(delta) > 0.1) {
+      this.y += delta;
+    }
+  }
+
+  preUpdate(time, delta) {
+    if (this.state === "dead") return;
+
+    this.alignToGround();
+
+    if (this.state === "moving") {
+      const direction = this.team === "player" ? 1 : -1;
+      this.x += this.speed * direction * (delta / 1000);
     }
 
-    trackVisualPart(part) {
-        this.visualParts.push(part);
-        return part;
+    this.findAndAttackEnemies();
+
+    if (this.target && this.state === "attacking") {
+      this.attackTarget(this.target);
+    }
+  }
+
+  findAndAttackEnemies() {
+    const enemyGroup =
+      this.team === "player"
+        ? this.scene.aiMonsters
+        : this.scene.playerMonsters;
+    const enemyCastle =
+      this.team === "player" ? this.scene.aiCastle : this.scene.playerCastle;
+
+    let target = null;
+    let closestDist = this.attackRange;
+
+    enemyGroup.getChildren().forEach((enemy) => {
+      if (enemy.hp <= 0) return;
+
+      const dist = Math.abs(enemy.x - this.x);
+      if (dist < closestDist) {
+        closestDist = dist;
+        target = enemy;
+      }
+    });
+
+    const castleDist = Math.abs(enemyCastle.x + enemyCastle.width / 2 - this.x);
+    if (castleDist < closestDist) {
+      target = enemyCastle;
     }
 
-    calculateGroundContactY() {
-        if (this.visualParts.length === 0) {
-            return this.height / 2 - 2;
-        }
+    if (target) {
+      this.state = "attacking";
+      this.target = target;
+    } else {
+      this.state = "moving";
+      this.target = null;
+    }
+  }
 
-        let bottom = this.height / 2;
+  attackTarget(target) {
+    if (!this.canAttack || this.state === "dead") return;
 
-        this.visualParts.forEach((part) => {
-            const bounds = part.getBounds();
-            bottom = Math.max(bottom, bounds.bottom - this.y);
-        });
-
-        return bottom;
+    if (target && typeof target.takeDamage === "function") {
+      const hit = this.rollCriticalDamage(this.attackDamage);
+      target.takeDamage(hit.damage, {
+        sourceX: this.x,
+        sourceY: this.y,
+        criticalType: hit.type,
+      });
     }
 
-    createAttackerShape(teamColor, borderColor) {
-        const bodyCenterY = this.height * 0.15;
-        const bodyWidth = this.width * 0.8;
-        const bodyHeight = this.height * 0.7;
-        const peakWidth = this.width * 0.3;
-        const peakHeight = this.height * 0.4;
-        const peakColor = this.team === 'player' ? 0x5aacff : 0xff7777;
+    this.canAttack = false;
+    this.scene.time.delayedCall(this.attackCooldown, () => {
+      this.canAttack = true;
+    });
+  }
 
-        this.bodyRect = this.trackVisualPart(
-            this.scene.add.rectangle(0, bodyCenterY, bodyWidth, bodyHeight, teamColor)
-        );
-        this.add(this.bodyRect);
+  rollCriticalDamage(baseDamage) {
+    const hit = {
+      damage: baseDamage,
+      type: null,
+    };
 
-        this.peak1 = this.trackVisualPart(
-            this.scene.add.rectangle(
-                -this.width * 0.2,
-                bodyCenterY - this.height * 0.5,
-                peakWidth,
-                peakHeight,
-                peakColor
-            )
-        );
-        this.add(this.peak1);
-
-        this.peak2 = this.trackVisualPart(
-            this.scene.add.rectangle(
-                this.width * 0.2,
-                bodyCenterY - this.height * 0.5,
-                peakWidth,
-                peakHeight,
-                peakColor
-            )
-        );
-        this.add(this.peak2);
-
-        this.border = this.trackVisualPart(
-            this.scene.add.rectangle(0, bodyCenterY, bodyWidth, bodyHeight)
-                .setStrokeStyle(2, borderColor)
-                .setFillStyle()
-        );
-        this.add(this.border);
+    const roll = Math.random();
+    if (roll < CRITICAL.SUPER_CHANCE) {
+      hit.damage = baseDamage * CRITICAL.SUPER_MULTIPLIER;
+      hit.type = "super";
+    } else if (roll < CRITICAL.SUPER_CHANCE + CRITICAL.CHANCE) {
+      hit.damage = baseDamage * CRITICAL.MULTIPLIER;
+      hit.type = "critical";
     }
 
-    createDefenderShape(teamColor, borderColor) {
-        const centerRadius = this.width * 0.35;
-        const circleCenterY = this.height * 0.05;
-        const shieldCenterY = this.height * 0.22;
-        const shieldColor = this.team === 'player' ? 0x2266bb : 0xdd3333;
+    return hit;
+  }
 
-        this.bodyCircle = this.trackVisualPart(
-            this.scene.add.circle(0, circleCenterY, centerRadius, teamColor)
-        );
-        this.add(this.bodyCircle);
+  takeDamage(amount, hitInfo = {}) {
+    this.showDamageText(amount, hitInfo);
+    if (this.state === "dead") return;
 
-        this.shield = this.trackVisualPart(
-            this.scene.add.rectangle(0, shieldCenterY, this.width * 0.7, this.height * 0.5, shieldColor)
-        );
-        this.add(this.shield);
+    this.hp -= amount;
 
-        this.border = this.trackVisualPart(
-            this.scene.add.circle(0, circleCenterY, centerRadius)
-                .setStrokeStyle(3, borderColor)
-                .setFillStyle()
-        );
-        this.add(this.border);
-
-        this.shieldBorder = this.trackVisualPart(
-            this.scene.add.rectangle(0, shieldCenterY, this.width * 0.7, this.height * 0.5)
-                .setStrokeStyle(3, borderColor)
-                .setFillStyle()
-        );
-        this.add(this.shieldBorder);
+    if (this.hp <= 0) {
+      this.hp = 0;
+      this.die();
     }
 
-    createSpeederShape(teamColor, borderColor) {
-        const bodyCenterY = this.height * 0.15;
-        const points = [
-            new Phaser.Geom.Point(0, bodyCenterY - this.height * 0.35),
-            new Phaser.Geom.Point(this.width * 0.35, bodyCenterY),
-            new Phaser.Geom.Point(0, bodyCenterY + this.height * 0.35),
-            new Phaser.Geom.Point(-this.width * 0.35, bodyCenterY)
-        ];
+    this.updateHpBar();
+  }
 
-        this.bodyDiamond = this.trackVisualPart(
-            this.scene.add.polygon(0, 0, points, teamColor)
-        );
-        this.add(this.bodyDiamond);
+  showDamageText(amount, hitInfo = {}) {
+    if (!this.scene || !this.scene.add || amount <= 0) return;
 
-        const lineColor = this.team === 'player' ? 0x88ddff : 0xff9944;
-        this.speedLine1 = this.trackVisualPart(
-            this.scene.add.rectangle(-this.width * 0.4, bodyCenterY - this.height * 0.15, this.width * 0.3, 2, lineColor)
-        );
-        this.add(this.speedLine1);
+    this.scene.damageTextCount = (this.scene.damageTextCount || 0) + 1;
+    const stackIndex = this.scene.damageTextCount % 5;
+    const sourceDirection =
+      hitInfo.sourceX === undefined
+        ? Phaser.Math.Between(-1, 1)
+        : Math.sign(this.x - hitInfo.sourceX) || Phaser.Math.Between(-1, 1);
+    const sideOffset = sourceDirection * (16 + stackIndex * 7);
+    const heightOffset = (stackIndex % 3) * 10;
+    const textColor = this.getDamageTextColor(hitInfo);
+    const startX = this.x + sideOffset + Phaser.Math.Between(-4, 4);
+    const startY = this.y - this.height * 0.75 - heightOffset;
+    const damageText = this.scene.add
+      .text(startX, startY, `-${Math.round(amount)}`, {
+        fontSize: "22px",
+        fontFamily: "Arial",
+        color: textColor,
+        fontStyle: "bold",
+        stroke: "#1a1020",
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(DEPTH.UI + 5);
 
-        this.speedLine2 = this.trackVisualPart(
-            this.scene.add.rectangle(-this.width * 0.4, bodyCenterY + this.height * 0.15, this.width * 0.3, 2, lineColor)
-        );
-        this.add(this.speedLine2);
+    this.scene.tweens.add({
+      targets: damageText,
+      y: startY - 36,
+      x: startX + sourceDirection * 12,
+      alpha: 0,
+      scaleX: 1.25,
+      scaleY: 1.25,
+      duration: 650,
+      ease: "Cubic.easeOut",
+      onComplete: () => damageText.destroy(),
+    });
+  }
 
-        this.border = this.trackVisualPart(
-            this.scene.add.polygon(0, 0, points)
-                .setStrokeStyle(2, borderColor)
-                .setFillStyle()
-        );
-        this.add(this.border);
+  getDamageTextColor(hitInfo = {}) {
+    if (hitInfo.criticalType === "super") return CRITICAL.SUPER_COLOR;
+    if (hitInfo.criticalType === "critical") return CRITICAL.COLOR;
+    return this.team === "player" ? "#ff8844" : "#66ddff";
+  }
+
+  updateHpBar() {
+    const ratio = this.hp / this.maxHp;
+    this.hpBar.setDisplaySize(this.width * ratio, 6);
+    this.hpBar.setX(-(this.width * (1 - ratio)) / 2);
+
+    let color;
+    if (ratio > 0.5) {
+      color = 0x00ff00;
+    } else if (ratio > 0.2) {
+      color = 0xffff00;
+    } else {
+      color = 0xff0000;
+    }
+    this.hpBar.setFillStyle(color);
+  }
+
+  die() {
+    this.state = "dead";
+
+    if (this.scene && typeof this.scene.onMonsterDeath === "function") {
+      this.scene.onMonsterDeath(this.team);
     }
 
-    createGradeIndicator(glowColor) {
-        const gradeStars = {
-            common: 1,
-            rare: 2,
-            epic: 3,
-            legend: 4
-        };
-
-        const starCount = gradeStars[this.grade] || 1;
-        const starSize = 4;
-        const starGap = 6;
-        const totalWidth = starCount * starSize + (starCount - 1) * starGap;
-        const startX = -totalWidth / 2;
-
-        for (let i = 0; i < starCount; i++) {
-            const starX = startX + i * (starSize + starGap) + starSize / 2;
-            const star = this.scene.add.star(starX, -this.height * 0.55, 5, starSize / 2, starSize / 2.5, glowColor)
-                .setOrigin(0.5);
-            this.add(star);
-        }
+    if (this.type === "attacker") {
+      this.scene.tweens.add({
+        targets: this,
+        scale: 1.2,
+        alpha: 0,
+        duration: 200,
+        ease: "Power2.out",
+        onComplete: () => this.destroy(),
+      });
+    } else if (this.type === "defender") {
+      this.scene.tweens.add({
+        targets: this,
+        scale: 0.8,
+        alpha: 0,
+        duration: 400,
+        ease: "Sine.inOut",
+        onComplete: () => this.destroy(),
+      });
+    } else {
+      this.scene.tweens.add({
+        targets: this,
+        scale: 0.5,
+        alpha: 0,
+        duration: 150,
+        ease: "Power3.in",
+        onComplete: () => this.destroy(),
+      });
     }
-
-    getGlowStrength() {
-        const glowMap = { common: 0.3, rare: 0.5, epic: 0.7, legend: 1.0 };
-        return glowMap[this.grade] || 0.3;
-    }
-
-    createGlowEffect(glowColor, strength) {
-        if (this.type === 'attacker') {
-            this.glowTween = this.scene.tweens.add({
-                targets: this,
-                alpha: 1,
-                duration: 500,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.inOut'
-            });
-        } else if (this.type === 'defender') {
-            this.glowTween = this.scene.tweens.add({
-                targets: this,
-                scale: 1 + strength * 0.05,
-                duration: 1000,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.inOut'
-            });
-        } else {
-            this.glowTween = this.scene.tweens.add({
-                targets: this,
-                scale: 1 + strength * 0.03,
-                duration: 300,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.inOut'
-            });
-        }
-    }
-
-    getGroundContactY() {
-        return this.groundContactY;
-    }
-
-    alignToGround() {
-        if (!this.scene || typeof this.scene.GROUND_Y !== 'number') return;
-
-        const bounds = this.getBounds();
-        const delta = this.scene.GROUND_Y - bounds.bottom;
-
-        if (Math.abs(delta) > 0.1) {
-            this.y += delta;
-        }
-    }
-
-    preUpdate(time, delta) {
-        if (this.state === 'dead') return;
-
-        this.alignToGround();
-
-        if (this.state === 'moving') {
-            const direction = this.team === 'player' ? 1 : -1;
-            this.x += this.speed * direction * (delta / 1000);
-        }
-
-        this.findAndAttackEnemies();
-
-        if (this.target && this.state === 'attacking') {
-            this.attackTarget(this.target);
-        }
-    }
-
-    findAndAttackEnemies() {
-        const enemyGroup = this.team === 'player' ? this.scene.aiMonsters : this.scene.playerMonsters;
-        const enemyCastle = this.team === 'player' ? this.scene.aiCastle : this.scene.playerCastle;
-
-        let target = null;
-        let closestDist = this.attackRange;
-
-        enemyGroup.getChildren().forEach((enemy) => {
-            if (enemy.hp <= 0) return;
-
-            const dist = Math.abs(enemy.x - this.x);
-            if (dist < closestDist) {
-                closestDist = dist;
-                target = enemy;
-            }
-        });
-
-        const castleDist = Math.abs(enemyCastle.x + enemyCastle.width / 2 - this.x);
-        if (castleDist < closestDist) {
-            target = enemyCastle;
-        }
-
-        if (target) {
-            this.state = 'attacking';
-            this.target = target;
-        } else {
-            this.state = 'moving';
-            this.target = null;
-        }
-    }
-
-    attackTarget(target) {
-        if (!this.canAttack || this.state === 'dead') return;
-
-        if (target && typeof target.takeDamage === 'function') {
-            target.takeDamage(this.attackDamage);
-        }
-
-        this.canAttack = false;
-        this.scene.time.delayedCall(this.attackCooldown, () => {
-            this.canAttack = true;
-        });
-    }
-
-    takeDamage(amount) {
-        if (this.state === 'dead') return;
-
-        this.hp -= amount;
-
-        if (this.hp <= 0) {
-            this.hp = 0;
-            this.die();
-        }
-
-        this.updateHpBar();
-    }
-
-    updateHpBar() {
-        const ratio = this.hp / this.maxHp;
-        this.hpBar.setDisplaySize(this.width * ratio, 6);
-        this.hpBar.setX(-(this.width * (1 - ratio)) / 2);
-
-        let color;
-        if (ratio > 0.5) {
-            color = 0x00ff00;
-        } else if (ratio > 0.2) {
-            color = 0xffff00;
-        } else {
-            color = 0xff0000;
-        }
-        this.hpBar.setFillStyle(color);
-    }
-
-    die() {
-        this.state = 'dead';
-
-        if (this.scene && typeof this.scene.onMonsterDeath === 'function') {
-            this.scene.onMonsterDeath(this.team);
-        }
-
-        if (this.type === 'attacker') {
-            this.scene.tweens.add({
-                targets: this,
-                scale: 1.2,
-                alpha: 0,
-                duration: 200,
-                ease: 'Power2.out',
-                onComplete: () => this.destroy()
-            });
-        } else if (this.type === 'defender') {
-            this.scene.tweens.add({
-                targets: this,
-                scale: 0.8,
-                alpha: 0,
-                duration: 400,
-                ease: 'Sine.inOut',
-                onComplete: () => this.destroy()
-            });
-        } else {
-            this.scene.tweens.add({
-                targets: this,
-                scale: 0.5,
-                alpha: 0,
-                duration: 150,
-                ease: 'Power3.in',
-                onComplete: () => this.destroy()
-            });
-        }
-    }
+  }
 }
