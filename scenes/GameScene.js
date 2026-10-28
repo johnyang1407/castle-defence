@@ -70,6 +70,7 @@ export default class GameScene extends Phaser.Scene {
   initGameState() {
     this.gameOver = false;
     this.winner = null;
+    this.playerCastleClicks = 0;
 
     // 에너지 (난이도별 최대값 적용)
     this.playerEnergy = ENERGY.INIT;
@@ -156,6 +157,29 @@ export default class GameScene extends Phaser.Scene {
     // 플레이어 성 (왼쪽)
     this.playerCastle = new Castle(this, 60, castleY, "player");
     this.add.existing(this.playerCastle);
+
+    this.graduationHint = this.add
+      .text(60 + CASTLE.WIDTH / 2, castleY - 55, "졸업 도전 0/3", {
+        fontSize: "18px",
+        fontFamily: "Arial, sans-serif",
+        color: "#ffdd66",
+      })
+      .setOrigin(0.5)
+      .setDepth(DEPTH.UI);
+    this.playerCastle.setInteractive(
+      new Phaser.Geom.Rectangle(0, -15, CASTLE.WIDTH, CASTLE.HEIGHT + 15),
+      Phaser.Geom.Rectangle.Contains,
+    );
+    this.playerCastle.input.cursor = "pointer";
+    this.playerCastle.on("pointerdown", () => {
+      if (this.gameOver || this.playerCastleClicks >= 3) return;
+      this.playerCastleClicks++;
+      this.graduationHint.setText(
+        this.playerCastleClicks === 3
+          ? "AI를 이기면 졸업!"
+          : `졸업 도전 ${this.playerCastleClicks}/3`,
+      );
+    });
 
     // AI 성 (오른쪽)
     this.aiCastle = new Castle(this, width - 60 - CASTLE.WIDTH, castleY, "ai");
@@ -823,6 +847,7 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(1000, () => {
       this.scene.start("GameOverScene", {
         winner: this.winner,
+        graduated: this.winner === "player" && this.playerCastleClicks >= 3,
         playerHp: Math.max(0, this.playerCastle.hp),
         aiHp: Math.max(0, this.aiCastle.hp),
         timeRemaining: this.remainingTime,

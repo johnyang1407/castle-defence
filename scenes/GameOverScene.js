@@ -9,6 +9,7 @@ export default class GameOverScene extends Phaser.Scene {
     init(data) {
         // GameScene에서 전달받은 데이터
         this.winner = data.winner || 'player';
+        this.graduated = this.winner === 'player' && data.graduated === true;
         this.playerHp = data.playerHp || 0;
         this.aiHp = data.aiHp || 0;
         this.timeRemaining = data.timeRemaining || 0;
@@ -28,8 +29,8 @@ export default class GameOverScene extends Phaser.Scene {
         let resultText, resultColor;
 
         if (this.winner === 'player') {
-            resultText = '🎉 VICTORY! 🎉';
-            resultColor = '#4caf50';
+            resultText = this.graduated ? '🎓 졸업 🎓' : '🎉 VICTORY! 🎉';
+            resultColor = this.graduated ? '#ffdd66' : '#4caf50';
         } else if (this.winner === 'ai') {
             resultText = '☠️ DEFEAT ☠️';
             resultColor = '#f44336';
