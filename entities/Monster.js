@@ -72,10 +72,16 @@ export default class Monster extends Phaser.GameObjects.Container {
 
   createMonsterShape(teamColor, borderColor, glowColor) {
     if (this.grade === "legendary") {
-      const dragon = this.scene.add.image(0, 0, "legendary-dragon")
+      this.dragon = this.scene.add.image(0, 0, "legendary-dragon")
         .setDisplaySize(this.width, this.height)
         .setFlipX(this.team === "player");
-      this.add(dragon);
+      this.add(this.dragon);
+      this.dragonBaseScaleX = this.dragon.scaleX;
+      this.dragonBaseScaleY = this.dragon.scaleY;
+      this.dragonAnimationTime = 0;
+      this.dragonAttackTime = 0;
+      this.dragonFire = this.scene.add.graphics();
+      this.add(this.dragonFire);
     } else if (this.type === "attacker") {
       this.createAttackerShape(teamColor, borderColor);
     } else if (this.type === "defender") {
@@ -263,6 +269,8 @@ export default class Monster extends Phaser.GameObjects.Container {
   preUpdate(time, delta) {
     if (this.state === "dead") return;
 
+    if (this.dragon) this.updateDragonAnimation(delta);
+
     if (this.state === "moving") {
       const direction = this.team === "player" ? 1 : -1;
       this.x += this.speed * direction * (delta / 1000);
@@ -314,6 +322,7 @@ export default class Monster extends Phaser.GameObjects.Container {
     if (!this.canAttack || this.state === "dead") return;
 
     if (target && typeof target.takeDamage === "function") {
+      if (this.dragon) this.dragonAttackTime = 400;
       const hit = this.rollCriticalDamage(this.attackDamage);
       target.takeDamage(hit.damage, {
         sourceX: this.x,
@@ -326,6 +335,41 @@ export default class Monster extends Phaser.GameObjects.Container {
     this.scene.time.delayedCall(this.attackCooldown, () => {
       this.canAttack = true;
     });
+  }
+
+  updateDragonAnimation(delta) {
+    const direction = this.team === "player" ? 1 : -1;
+    this.dragonAnimationTime += delta;
+    this.dragonFire.clear();
+
+    if (this.dragonAttackTime > 0) {
+      this.dragonAttackTime = Math.max(0, this.dragonAttackTime - delta);
+      const progress = 1 - this.dragonAttackTime / 400;
+      const lunge = Math.sin(progress * Math.PI);
+      this.dragon.setPosition(direction * this.width * 0.18 * lunge, -this.height * 0.04 * lunge);
+      this.dragon.setRotation(direction * 0.14 * lunge);
+      this.dragon.setScale(this.dragonBaseScaleX * (1 + 0.12 * lunge), this.dragonBaseScaleY * (1 - 0.06 * lunge));
+      if (progress > 0.2 && progress < 0.85) {
+        const mouthX = direction * this.width * 0.4;
+        const mouthY = -this.height * 0.22;
+        const length = this.width * 0.7 * Math.sin((progress - 0.2) / 0.65 * Math.PI);
+        this.dragonFire.fillStyle(0xff6200, 0.9);
+        this.dragonFire.fillTriangle(mouthX, mouthY - 6, mouthX, mouthY + 6, mouthX + direction * length, mouthY);
+        this.dragonFire.fillStyle(0xffdf45, 1);
+        this.dragonFire.fillTriangle(mouthX, mouthY - 3, mouthX, mouthY + 3, mouthX + direction * length * 0.7, mouthY);
+      }
+      return;
+    }
+
+    // Eight discrete poses give the original pixel art a lively walking cycle.
+    const poses = [
+      [0, 0, 1, 1], [-1, -0.025, 1.02, 0.98], [-3, -0.04, 1.03, 0.97], [-4, -0.02, 1.01, 1.02],
+      [-3, 0, 1, 1.04], [-2, 0.025, 0.98, 1.03], [-1, 0.04, 0.97, 1.01], [0, 0.02, 0.99, 0.99],
+    ];
+    const pose = this.state === "moving" ? poses[Math.floor(this.dragonAnimationTime / 90) % poses.length] : poses[0];
+    this.dragon.setPosition(0, pose[0]);
+    this.dragon.setRotation(direction * pose[1]);
+    this.dragon.setScale(this.dragonBaseScaleX * pose[2], this.dragonBaseScaleY * pose[3]);
   }
 
   rollCriticalDamage(baseDamage) {
