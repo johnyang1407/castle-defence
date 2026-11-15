@@ -71,7 +71,12 @@ export default class Monster extends Phaser.GameObjects.Container {
   }
 
   createMonsterShape(teamColor, borderColor, glowColor) {
-    if (this.type === "attacker") {
+    if (this.grade === "legendary") {
+      const dragon = this.scene.add.image(0, 0, "legendary-dragon")
+        .setDisplaySize(this.width, this.height)
+        .setFlipX(this.team === "player");
+      this.add(dragon);
+    } else if (this.type === "attacker") {
       this.createAttackerShape(teamColor, borderColor);
     } else if (this.type === "defender") {
       this.createDefenderShape(teamColor, borderColor);

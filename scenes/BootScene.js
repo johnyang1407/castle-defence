@@ -2,6 +2,8 @@
  * BootScene - 리소스 로딩 씬
  * 게임 시작 전 필요한 에셋을 로드합니다.
  */
+import dragonImage from '../docs/images/dragon-pixel.png';
+
 export default class BootScene extends Phaser.Scene {
     constructor() {
         super({ key: 'BootScene' });
@@ -10,6 +12,7 @@ export default class BootScene extends Phaser.Scene {
     preload() {
         // 로딩 화면 표시
         this.createLoadingScreen();
+        this.load.image('legendary-dragon', dragonImage);
 
         // 현재는 에셋 없이 시작 (나중에 추가)
         // this.load.image('castle', 'assets/images/castle.png');
@@ -17,6 +20,7 @@ export default class BootScene extends Phaser.Scene {
     }
 
     create() {
+        this.textures.get('legendary-dragon').setFilter(Phaser.Textures.FilterMode.NEAREST);
         console.log('BootScene: 리소스 로딩 완료');
 
         // 메뉴 씬으로 전환
