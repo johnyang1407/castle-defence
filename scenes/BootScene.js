@@ -4,6 +4,8 @@
  */
 import dragonImage from '../docs/images/dragon-motion-sprites.png';
 import commonImage from '../docs/images/common.png';
+import golemWalkImage from '../docs/images/nature-golem-walk-8.png';
+import golemAttackImage from '../docs/images/nature-golem-attack-4.png';
 
 export default class BootScene extends Phaser.Scene {
     constructor() {
@@ -15,6 +17,8 @@ export default class BootScene extends Phaser.Scene {
         this.createLoadingScreen();
         this.load.spritesheet('legendary-dragon', dragonImage, { frameWidth: 362, frameHeight: 362 });
         this.load.image('common-source', commonImage);
+        this.load.spritesheet('epic-golem-walk', golemWalkImage, { frameWidth: 443, frameHeight: 443 });
+        this.load.spritesheet('epic-golem-attack', golemAttackImage, { frameWidth: 543, frameHeight: 724 });
 
         // 현재는 에셋 없이 시작 (나중에 추가)
         // this.load.image('castle', 'assets/images/castle.png');
@@ -37,6 +41,8 @@ export default class BootScene extends Phaser.Scene {
         texture.refresh();
         texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
         this.textures.get('legendary-dragon').setFilter(Phaser.Textures.FilterMode.NEAREST);
+        this.textures.get('epic-golem-walk').setFilter(Phaser.Textures.FilterMode.NEAREST);
+        this.textures.get('epic-golem-attack').setFilter(Phaser.Textures.FilterMode.NEAREST);
         console.log('BootScene: 리소스 로딩 완료');
 
         // 메뉴 씬으로 전환

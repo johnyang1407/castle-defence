@@ -85,6 +85,14 @@ export default class Monster extends Phaser.GameObjects.Container {
       this.add(this.dragon);
       this.dragonAnimationTime = 0;
       this.dragonAttackTime = 0;
+    } else if (this.grade === "epic") {
+      this.golem = this.scene.add
+        .sprite(0, 0, "epic-golem-walk", 0)
+        .setScale(0.2)
+        .setFlipX(this.team !== "player");
+      this.add(this.golem);
+      this.golemAnimationTime = 0;
+      this.golemAttackTime = 0;
     } else if (this.type === "attacker") {
       this.createAttackerShape(teamColor, borderColor);
     } else if (this.type === "defender") {
@@ -274,6 +282,7 @@ export default class Monster extends Phaser.GameObjects.Container {
 
     if (this.dragon) this.updateDragonAnimation(delta);
     if (this.commonSprite) this.updateCommonAnimation(delta);
+    if (this.golem) this.updateGolemAnimation(delta);
 
     if (this.state === "moving") {
       const direction = this.team === "player" ? 1 : -1;
@@ -328,6 +337,7 @@ export default class Monster extends Phaser.GameObjects.Container {
     if (target && typeof target.takeDamage === "function") {
       if (this.dragon) this.dragonAttackTime = 400;
       if (this.commonSprite) this.commonAttackTime = 400;
+      if (this.golem) this.golemAttackTime = 400;
       const hit = this.rollCriticalDamage(this.attackDamage);
       target.takeDamage(hit.damage, {
         sourceX: this.x,
@@ -361,6 +371,25 @@ export default class Monster extends Phaser.GameObjects.Container {
     } else {
       this.commonSprite.setFrame(this.state === "moving" ? Math.floor(this.commonAnimationTime / 90) % 8 : 8);
     }
+  }
+
+  updateGolemAnimation(delta) {
+    this.golemAnimationTime += delta;
+    this.golem.setFlipX(this.team !== "player");
+
+    if (this.golemAttackTime > 0) {
+      this.golemAttackTime = Math.max(0, this.golemAttackTime - delta);
+      this.golem.setTexture(
+        "epic-golem-attack",
+        Math.min(3, Math.floor((400 - this.golemAttackTime) / 100)),
+      );
+      return;
+    }
+
+    this.golem.setTexture(
+      "epic-golem-walk",
+      this.state === "moving" ? Math.floor(this.golemAnimationTime / 110) % 8 : 0,
+    );
   }
 
   rollCriticalDamage(baseDamage) {
