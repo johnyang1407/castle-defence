@@ -3,6 +3,7 @@
  * 게임 시작 전 필요한 에셋을 로드합니다.
  */
 import dragonImage from '../docs/images/dragon-motion-sprites.png';
+import commonImage from '../docs/images/common.png';
 
 export default class BootScene extends Phaser.Scene {
     constructor() {
@@ -13,6 +14,7 @@ export default class BootScene extends Phaser.Scene {
         // 로딩 화면 표시
         this.createLoadingScreen();
         this.load.spritesheet('legendary-dragon', dragonImage, { frameWidth: 362, frameHeight: 362 });
+        this.load.image('common-source', commonImage);
 
         // 현재는 에셋 없이 시작 (나중에 추가)
         // this.load.image('castle', 'assets/images/castle.png');
@@ -20,6 +22,20 @@ export default class BootScene extends Phaser.Scene {
     }
 
     create() {
+        const source = this.textures.get('common-source').getSourceImage();
+        const texture = this.textures.createCanvas('common-motion', source.width, source.height);
+        const context = texture.getContext();
+        context.drawImage(source, 0, 0);
+        const pixels = context.getImageData(0, 0, source.width, source.height);
+        for (let i = 0; i < pixels.data.length; i += 4) {
+            if (pixels.data[i] > 200 && pixels.data[i + 1] > 200 && pixels.data[i + 2] > 200) pixels.data[i + 3] = 0;
+        }
+        context.putImageData(pixels, 0, 0);
+        for (let frame = 0; frame < 12; frame++) {
+            texture.add(frame, 0, (frame % 4) * 362, Math.floor(frame / 4) * 362, 362, 362);
+        }
+        texture.refresh();
+        texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
         this.textures.get('legendary-dragon').setFilter(Phaser.Textures.FilterMode.NEAREST);
         console.log('BootScene: 리소스 로딩 완료');
 

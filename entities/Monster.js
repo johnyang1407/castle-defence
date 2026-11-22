@@ -71,7 +71,14 @@ export default class Monster extends Phaser.GameObjects.Container {
   }
 
   createMonsterShape(teamColor, borderColor, glowColor) {
-    if (this.grade === "legendary") {
+    if (this.grade === "common") {
+      this.commonSprite = this.scene.add.image(0, 0, "common-motion", 0)
+        .setDisplaySize(this.width * 1.3, this.height * 1.3)
+        .setFlipX(this.team !== "player");
+      this.add(this.commonSprite);
+      this.commonAnimationTime = 0;
+      this.commonAttackTime = 0;
+    } else if (this.grade === "legendary") {
       this.dragon = this.scene.add.image(0, 0, "legendary-dragon")
         .setDisplaySize(this.width, this.height)
         .setFlipX(this.team === "player");
@@ -266,6 +273,7 @@ export default class Monster extends Phaser.GameObjects.Container {
     if (this.state === "dead") return;
 
     if (this.dragon) this.updateDragonAnimation(delta);
+    if (this.commonSprite) this.updateCommonAnimation(delta);
 
     if (this.state === "moving") {
       const direction = this.team === "player" ? 1 : -1;
@@ -319,6 +327,7 @@ export default class Monster extends Phaser.GameObjects.Container {
 
     if (target && typeof target.takeDamage === "function") {
       if (this.dragon) this.dragonAttackTime = 400;
+      if (this.commonSprite) this.commonAttackTime = 400;
       const hit = this.rollCriticalDamage(this.attackDamage);
       target.takeDamage(hit.damage, {
         sourceX: this.x,
@@ -342,6 +351,16 @@ export default class Monster extends Phaser.GameObjects.Container {
       return;
     }
     this.dragon.setFrame(this.state === "moving" ? Math.floor(this.dragonAnimationTime / 90) % 8 : 0);
+  }
+
+  updateCommonAnimation(delta) {
+    this.commonAnimationTime += delta;
+    if (this.commonAttackTime > 0) {
+      this.commonAttackTime = Math.max(0, this.commonAttackTime - delta);
+      this.commonSprite.setFrame(8 + Math.min(3, Math.floor((400 - this.commonAttackTime) / 100)));
+    } else {
+      this.commonSprite.setFrame(this.state === "moving" ? Math.floor(this.commonAnimationTime / 90) % 8 : 8);
+    }
   }
 
   rollCriticalDamage(baseDamage) {

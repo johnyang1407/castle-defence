@@ -8,14 +8,16 @@ export const AI_CONFIG = {
         availableGrades: ['common', 'rare', 'epic', 'super_epic'],
         decisionDelay: 500,  // AI 반응 속도
         maxEnergy: 30,  // 에너지 최대값
-        monsterDamageMultiplier: 0.9
+        monsterDamageMultiplier: 0.9,
+        energyRegenMultiplier: 0.7
     },
     normal: {
         name: '중급',
         spawnCooldown: 3000,
         availableGrades: ['common', 'rare', 'epic', 'super_epic', 'mystic', 'legendary'],
         decisionDelay: 300,
-        maxEnergy: 40
+        maxEnergy: 40,
+        energyRegenMultiplier: 0.8
     },
     hard: {
         name: '고급',
