@@ -21,7 +21,7 @@ export const AI_CONFIG = {
     },
     hard: {
         name: '고급',
-        spawnCooldown: 2000,
+        spawnCooldown: 2500,
         availableGrades: ['common', 'rare', 'epic', 'super_epic', 'mystic', 'legendary', 'hero'],
         decisionDelay: 100,
         maxEnergy: 50,
