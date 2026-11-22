@@ -2,7 +2,7 @@
  * BootScene - 리소스 로딩 씬
  * 게임 시작 전 필요한 에셋을 로드합니다.
  */
-import dragonImage from '../docs/images/dragon-pixel.png';
+import dragonImage from '../docs/images/dragon-motion-sprites.png';
 
 export default class BootScene extends Phaser.Scene {
     constructor() {
@@ -12,7 +12,7 @@ export default class BootScene extends Phaser.Scene {
     preload() {
         // 로딩 화면 표시
         this.createLoadingScreen();
-        this.load.image('legendary-dragon', dragonImage);
+        this.load.spritesheet('legendary-dragon', dragonImage, { frameWidth: 362, frameHeight: 362 });
 
         // 현재는 에셋 없이 시작 (나중에 추가)
         // this.load.image('castle', 'assets/images/castle.png');
