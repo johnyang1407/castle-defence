@@ -74,6 +74,11 @@ export default class Monster extends Phaser.GameObjects.Container {
   }
 
   createMonsterShape(teamColor, borderColor, glowColor) {
+    if (this.grade === "epic") {
+      this.createEpicGolemSprite();
+      return;
+    }
+
     if (this.type === "attacker") {
       this.createAttackerShape(teamColor, borderColor);
     } else if (this.type === "defender") {
@@ -86,6 +91,40 @@ export default class Monster extends Phaser.GameObjects.Container {
     if (glowStrength > 0) {
       this.createGlowEffect(glowColor, glowStrength);
     }
+  }
+
+  createEpicGolemSprite() {
+    this.epicGolemSprite = this.trackVisualPart(
+      this.scene.add
+        .sprite(0, 0, "epic-golem-walk", 0)
+        .setOrigin(0.5, 1)
+        .setScale(0.2)
+        .setFlipX(this.team === "ai"),
+    );
+    this.add(this.epicGolemSprite);
+    this.epicGolemWalkTime = 0;
+    this.epicGolemAttackTime = 0;
+  }
+
+  updateEpicGolemAnimation(delta) {
+    if (!this.epicGolemSprite) return;
+
+    this.epicGolemSprite.setFlipX(this.team === "ai");
+
+    if (this.epicGolemAttackTime > 0) {
+      this.epicGolemAttackTime = Math.max(0, this.epicGolemAttackTime - delta);
+      const frame = Math.min(
+        3,
+        Math.floor((400 - this.epicGolemAttackTime) / 100),
+      );
+      this.epicGolemSprite.setTexture("epic-golem-attack", frame);
+      return;
+    }
+
+    this.epicGolemWalkTime += delta;
+    const frame =
+      this.state === "moving" ? Math.floor(this.epicGolemWalkTime / 110) % 8 : 0;
+    this.epicGolemSprite.setTexture("epic-golem-walk", frame);
   }
 
   trackVisualPart(part) {
@@ -335,6 +374,7 @@ export default class Monster extends Phaser.GameObjects.Container {
     }
 
     this.findAndAttackEnemies();
+    this.updateEpicGolemAnimation(delta);
 
     if (this.target && this.state === "attacking") {
       this.attackTarget(this.target);
@@ -386,6 +426,7 @@ export default class Monster extends Phaser.GameObjects.Container {
         sourceY: this.y,
         criticalType: hit.type,
       });
+      if (this.epicGolemSprite) this.epicGolemAttackTime = 400;
     }
 
     this.canAttack = false;

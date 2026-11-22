@@ -8,6 +8,15 @@ export default class BootScene extends Phaser.Scene {
     }
 
     preload() {
+        this.load.spritesheet('epic-golem-walk', 'assets/sprites/nature-golem-walk-8.png', {
+            frameWidth: 443,
+            frameHeight: 443
+        });
+        this.load.spritesheet('epic-golem-attack', 'assets/sprites/nature-golem-attack-4.png', {
+            frameWidth: 543,
+            frameHeight: 724
+        });
+
         // 로딩 화면 표시
         this.createLoadingScreen();
 
