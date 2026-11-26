@@ -38,6 +38,7 @@ export default class Monster extends Phaser.GameObjects.Container {
     const glowColor = this.team === "player" ? 0x88ddff : 0xff9944;
 
     this.createMonsterShape(teamColor, borderColor, glowColor);
+    this.alignSpritesToGround();
     this.createGradeIndicator(glowColor);
 
     this.hpBarBg = this.scene.add.rectangle(
@@ -78,6 +79,20 @@ export default class Monster extends Phaser.GameObjects.Container {
       this.add(this.commonSprite);
       this.commonAnimationTime = 0;
       this.commonAttackTime = 0;
+    } else if (this.grade === "rare") {
+      this.alien = this.scene.add.image(0, 0, "rare-alien-motion", 0)
+        .setDisplaySize(this.width * 1.8, this.height * 1.3)
+        .setFlipX(this.team !== "player");
+      this.add(this.alien);
+      this.alienAnimationTime = 0;
+      this.alienAttackTime = 0;
+    } else if (this.grade === "super_epic") {
+      this.knight = this.scene.add.image(0, 0, "super-epic-motion", 0)
+        .setDisplaySize(this.width * 1.15, this.height * 1.15)
+        .setFlipX(this.team !== "player");
+      this.add(this.knight);
+      this.knightAnimationTime = 0;
+      this.knightAttackTime = 0;
     } else if (this.grade === "legendary") {
       this.dragon = this.scene.add.image(0, 0, "legendary-dragon")
         .setDisplaySize(this.width, this.height)
@@ -283,6 +298,9 @@ export default class Monster extends Phaser.GameObjects.Container {
     if (this.dragon) this.updateDragonAnimation(delta);
     if (this.commonSprite) this.updateCommonAnimation(delta);
     if (this.golem) this.updateGolemAnimation(delta);
+    if (this.knight) this.updateKnightAnimation(delta);
+    if (this.alien) this.updateAlienAnimation(delta);
+    this.alignSpritesToGround();
 
     if (this.state === "moving") {
       const direction = this.team === "player" ? 1 : -1;
@@ -338,6 +356,8 @@ export default class Monster extends Phaser.GameObjects.Container {
       if (this.dragon) this.dragonAttackTime = 400;
       if (this.commonSprite) this.commonAttackTime = 400;
       if (this.golem) this.golemAttackTime = 400;
+      if (this.knight) this.knightAttackTime = 400;
+      if (this.alien) this.alienAttackTime = 400;
       const hit = this.rollCriticalDamage(this.attackDamage);
       target.takeDamage(hit.damage, {
         sourceX: this.x,
@@ -350,6 +370,39 @@ export default class Monster extends Phaser.GameObjects.Container {
     this.scene.time.delayedCall(this.attackCooldown, () => {
       this.canAttack = true;
     });
+  }
+
+  updateAlienAnimation(delta) {
+    this.alienAnimationTime += delta;
+    if (this.alienAttackTime > 0) {
+      this.alienAttackTime = Math.max(0, this.alienAttackTime - delta);
+      this.alien.setFrame(8 + Math.min(3, Math.floor((400 - this.alienAttackTime) / 100)));
+    } else {
+      this.alien.setFrame(this.state === "moving" ? Math.floor(this.alienAnimationTime / 100) % 8 : 0);
+    }
+  }
+
+  alignSpritesToGround() {
+    // The container is centered above the ground; sprite sheets have different
+    // amounts of transparent space below the feet.
+    const align = (sprite, footLine) => {
+      if (sprite) sprite.y = this.height / 2 - (footLine - 0.5) * sprite.displayHeight;
+    };
+    align(this.commonSprite, 0.93);
+    align(this.alien, 0.9);
+    align(this.knight, this.knightAttackTime > 0 || this.state !== "moving" ? 1 : 0.94);
+    align(this.golem, 0.94);
+    align(this.dragon, 0.9);
+  }
+
+  updateKnightAnimation(delta) {
+    this.knightAnimationTime += delta;
+    if (this.knightAttackTime > 0) {
+      this.knightAttackTime = Math.max(0, this.knightAttackTime - delta);
+      this.knight.setFrame(8 + Math.min(3, Math.floor((400 - this.knightAttackTime) / 100)));
+    } else {
+      this.knight.setFrame(this.state === "moving" ? Math.floor(this.knightAnimationTime / 100) % 8 : 8);
+    }
   }
 
   updateDragonAnimation(delta) {
@@ -383,6 +436,7 @@ export default class Monster extends Phaser.GameObjects.Container {
         "epic-golem-attack",
         Math.min(3, Math.floor((400 - this.golemAttackTime) / 100)),
       );
+      this.golem.setScale(0.125);
       return;
     }
 
@@ -390,6 +444,7 @@ export default class Monster extends Phaser.GameObjects.Container {
       "epic-golem-walk",
       this.state === "moving" ? Math.floor(this.golemAnimationTime / 110) % 8 : 0,
     );
+    this.golem.setScale(0.2);
   }
 
   rollCriticalDamage(baseDamage) {
