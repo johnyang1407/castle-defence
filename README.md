@@ -8,7 +8,7 @@
 
 게임 주소:
 
-- `https://gabrielwithappy.github.io/castle-depense/`
+- `https://johnyang1407.github.io/castle-defence/`
 
 ## 이 프로젝트는 어떤 게임인가요?
 
